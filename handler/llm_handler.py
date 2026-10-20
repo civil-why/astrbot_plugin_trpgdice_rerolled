@@ -12,6 +12,7 @@ from typing import Optional
 from ..component.astrbot_compat import filter, AstrMessageEvent
 
 from ..component import character as charmod
+from ..component import bot_switch
 from ..component import dice as dice_mod
 from ..component import sanity
 from ..component.output import get_output
@@ -20,6 +21,8 @@ from ..component.utils import roll_character, format_character, roll_dnd_charact
 
 class LLMToolsMixin:
 
+    _BOT_DISABLED = "骰子插件当前已关闭，无法使用该功能（发送 .bot on 可重新开启）。"
+
     @filter.llm_tool(name="roll_dice")
     async def llm_tool_roll_dice(self, event: AstrMessageEvent, expression: str = "1d100") -> Optional[str]:
         """为玩家掷骰子，支持各种骰子表达式。
@@ -27,6 +30,8 @@ class LLMToolsMixin:
         Args:
             expression(string): 骰子表达式，例如 1d100、3d6、2d6+5、10d6k5（保留最高5个）、3#1d20（掷3次）
         """
+        if not bot_switch.is_enabled(bot_switch.session_key(event)):
+            return self._BOT_DISABLED
         expression = expression.strip()[:200]
         return dice_mod.handle_roll_dice(expression, name=event.get_sender_name())
 
@@ -38,6 +43,8 @@ class LLMToolsMixin:
             skill_name(string): 技能名称，例如 侦查、射击、格斗
             skill_value(number): 技能当前值（0-100）
         """
+        if not bot_switch.is_enabled(bot_switch.session_key(event)):
+            return self._BOT_DISABLED
         skill_name = skill_name.strip()[:30]
         skill_value = max(0, min(int(skill_value), 100))
         group_id = str(event.get_group_id() or "0")
@@ -51,6 +58,8 @@ class LLMToolsMixin:
         Args:
             loss_formula(string): 理智损失公式，格式为 成功损失/失败损失，例如 1d3/1d6、0/1d8
         """
+        if not bot_switch.is_enabled(bot_switch.session_key(event)):
+            return self._BOT_DISABLED
         user_id = event.get_sender_id()
         chara_data = charmod.get_current_character(user_id)
         if not chara_data:
@@ -73,6 +82,8 @@ class LLMToolsMixin:
         Args:
             count(number): 生成角色数量，默认1，最多5
         """
+        if not bot_switch.is_enabled(bot_switch.session_key(event)):
+            return self._BOT_DISABLED
         count = max(1, min(count, 5))
         chars = [roll_character() for _ in range(count)]
         results = [format_character(c, index=i + 1) for i, c in enumerate(chars)]
@@ -85,6 +96,8 @@ class LLMToolsMixin:
         Args:
             count(number): 生成角色数量，默认1，最多5
         """
+        if not bot_switch.is_enabled(bot_switch.session_key(event)):
+            return self._BOT_DISABLED
         count = max(1, min(count, 5))
         chars = [roll_dnd_character() for _ in range(count)]
         results = [format_dnd_character(c, index=i + 1) for i, c in enumerate(chars)]
@@ -97,11 +110,15 @@ class LLMToolsMixin:
         Args:
             ring(number): 法术环位，最低3，例如 3、5、9
         """
+        if not bot_switch.is_enabled(bot_switch.session_key(event)):
+            return self._BOT_DISABLED
         return dice_mod.fireball(ring)
 
     @filter.llm_tool(name="daily_luck")
     async def llm_tool_daily_luck(self, event: AstrMessageEvent) -> Optional[str]:
         """查询今日运势（JRRP），结果基于用户ID和日期生成，每日固定。"""
+        if not bot_switch.is_enabled(bot_switch.session_key(event)):
+            return self._BOT_DISABLED
         return dice_mod.roll_RP(event.get_sender_id())
 
     @filter.llm_tool(name="set_output_template")
@@ -112,6 +129,8 @@ class LLMToolsMixin:
             template_key(string): 模板路径，例如 dice.normal.success、skill_check.normal、san.check_result.loss
             template_value(string): 新的模板内容，使用 {变量名} 占位符，例如 {name} 掷出了 {result}，总计 {total} 点！
         """
+        if not bot_switch.is_enabled(bot_switch.session_key(event)):
+            return self._BOT_DISABLED
         # key：只允许字母/数字/点，防止注入奇怪路径
         if not re.match(r'^[a-zA-Z0-9_.]{1,80}$', template_key):
             return "模板路径格式无效，仅允许字母、数字和点。"
@@ -134,6 +153,8 @@ class LLMToolsMixin:
             enabled(boolean): 是否启用 LLM 美化模式
             system_prompt(string): LLM 美化时使用的系统提示词，留空则使用默认提示词
         """
+        if not bot_switch.is_enabled(bot_switch.session_key(event)):
+            return self._BOT_DISABLED
         if system_prompt and len(system_prompt) > 2000:
             return "系统提示词过长，请控制在 2000 字以内。"
         from ..component.output import set_config_override

@@ -1,4 +1,23 @@
 {
+  "bot": {
+    "description": "骰娘开关与介绍",
+    "type": "object",
+    "hint": "`.bot` 显示介绍；`.bot off` / `.bot on` 按群独立开关（群内所有成员均可使用，不影响其它群）。开关状态持久保存，重启 Astrbot 后依然有效",
+    "items": {
+      "intro": {
+        "description": "自定义 .bot 介绍内容",
+        "type": "text",
+        "hint": "留空则使用「输出配置 → bot.info」。可用变量：{name} {version} {status} {platform} {prefix} {card} {uptime} {scope} {updated_at} {updated_by}",
+        "default": ""
+      },
+      "default_enabled": {
+        "description": "某个群从未切换过开关时的默认状态",
+        "type": "bool",
+        "hint": "仅影响还没有开关记录的群 / 私聊会话",
+        "default": true
+      }
+    }
+  },
   "llm_mode": {
     "description": "LLM 模式配置",
     "type": "object",
@@ -28,6 +47,72 @@
     "type": "object",
     "hint": "可自定义所有掷骰、判定和系统输出文本，使用 {变量名} 作为占位符",
     "items": {
+      "bot": {
+        "description": "骰娘介绍与开关输出",
+        "type": "object",
+        "items": {
+          "info": {
+            "description": ".bot 介绍正文 (变量: name, version, status, platform, prefix, card, uptime, scope)",
+            "type": "text",
+            "default": "📖 {name} {version}\n状态：{status}　平台：{platform}　已运行：{uptime}\n命令前缀：{prefix}\n当前人物卡：{card}\n\n· 掷骰：.r 1d100 / .rh / .rd 20\n· 检定：.ra 侦查 / .sc 1d3/1d6 / .en 聆听\n· 人物卡：.pc create|show|list|change|update|delete / .st 力量35\n· 其他：.ti .li .init .ri .log .dicehelp\n· 开关：.bot off 关闭{scope} / .bot on 恢复"
+          },
+          "status_on": {
+            "description": "开关状态文字（开启）",
+            "type": "text",
+            "default": "✅ 运行中"
+          },
+          "status_off": {
+            "description": "开关状态文字（关闭）",
+            "type": "text",
+            "default": "⛔ 已关闭"
+          },
+          "on": {
+            "description": ".bot on 输出 (变量: scope)",
+            "type": "text",
+            "default": "✅ 已重新开启{scope}的骰娘功能，掷骰、人物卡与日志恢复正常。"
+          },
+          "off": {
+            "description": ".bot off 输出 (变量: scope)",
+            "type": "text",
+            "default": "⛔ 已关闭{scope}的骰娘功能（掷骰 / 人物卡 / 日志 / 先攻）。其它群聊、其他插件与 LLM 对话不受影响，发送 .bot on 可重新开启。"
+          },
+          "already_on": {
+            "description": "重复开启时的提示 (变量: scope)",
+            "type": "text",
+            "default": "{scope}的骰娘功能已经处于开启状态。"
+          },
+          "already_off": {
+            "description": "重复关闭时的提示 (变量: scope)",
+            "type": "text",
+            "default": "{scope}的骰娘功能已经处于关闭状态，发送 .bot on 可重新开启。"
+          },
+          "usage": {
+            "description": ".bot 未知子命令时的用法提示",
+            "type": "text",
+            "default": "用法：.bot 查看介绍 ｜ .bot on 开启 ｜ .bot off 关闭"
+          },
+          "dismiss": {
+            "description": ".dismiss 退群前发送的告别语（留空则不发送）",
+            "type": "text",
+            "default": "👋 收到，骰娘先退群啦，后会有期～"
+          },
+          "dismiss_private": {
+            "description": ".dismiss 在私聊中使用时的提示",
+            "type": "text",
+            "default": "这个指令要在群里使用哦。"
+          },
+          "dismiss_unsupported": {
+            "description": "当前平台不支持自动退群时的提示",
+            "type": "text",
+            "default": "当前平台不支持自动退群，请手动把骰娘移出群聊。"
+          },
+          "dismiss_failed": {
+            "description": "退群失败时的提示 (变量: error)",
+            "type": "text",
+            "default": "退群失败：{error}"
+          }
+        }
+      },
       "skill_check": {
         "description": "技能判定输出",
         "type": "object",

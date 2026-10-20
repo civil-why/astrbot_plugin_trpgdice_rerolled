@@ -12,6 +12,7 @@ import re
 
 from ..component.astrbot_compat import AstrMessageEvent, filter, event_message_type, EventMessageType
 
+from ..component import bot_switch
 from ..component.output import get_config
 from ..component.platform_adapter import get_adapter
 
@@ -58,6 +59,29 @@ class RouterMixin:
     async def identify_command(self, event: AstrMessageEvent):
         message = event.message_obj.message_str
 
+        # 先解析命令词，再决定是否记录日志：
+        # 插件被 .bot off 关闭后不再产生任何后台行为（包括日志落盘）。
+        raw_message = message
+        message_after_prefix = ""
+        cmd = ""
+        expr_raw = ""
+
+        if any(message.startswith(prefix) for prefix in self.wakeup_prefix):
+            # 从原始消息（保留空格）中提取命令词，避免 "pc list" → "pclist" 的合并问题
+            message_after_prefix = message[1:]
+            m_space = re.match(r'^([a-z]+)', message_after_prefix, re.I)
+            if m_space:
+                cmd = m_space.group(1).lower()
+                expr_raw = message_after_prefix[m_space.end():].strip()
+
+        # ------------------- 总开关（按群独立）-------------------
+        # 关闭时只放行 .bot（查看状态 / 重新开启）与 .dismiss（退群），
+        # 本群的其余指令与日志记录全部跳过，其它群聊不受影响。
+        # 这里直接 return 而不拦截事件，AstrBot 本体、LLM 对话与其他插件不受影响。
+        if cmd not in ("bot", "dismiss") and not bot_switch.is_enabled(bot_switch.session_key(event)):
+            return
+        # ----------------------------------------------
+
         # ------------------- 日志收集 -------------------
         group_id = event.message_obj.group_id
 
@@ -79,18 +103,8 @@ class RouterMixin:
             )
         # ----------------------------------------------------
 
-        if not any(message.startswith(prefix) for prefix in self.wakeup_prefix):
+        if not cmd:
             return
-
-        raw_message = message
-
-        # 从原始消息（保留空格）中提取命令词，避免 "pc list" → "pclist" 的合并问题
-        message_after_prefix = message[1:]
-        m_space = re.match(r'^([a-z]+)', message_after_prefix, re.I)
-        if not m_space:
-            return
-        cmd = m_space.group(1).lower()
-        expr_raw = message_after_prefix[m_space.end():].strip()
 
         # 空格剔除版，用于 ra/en/rd/r 等复杂表达式的数值提取
         message = re.sub(r'\s+', '', message_after_prefix)
@@ -169,14 +183,14 @@ class RouterMixin:
             text = await self.handle_roll_dice(event, expr, remark)
             if text:
                 adapter = get_adapter(event)
-                sent = await adapter.send_group_message(event, text, reply=True)
+                sent = await adapter.send_message(event, text, reply=True)
                 if not sent:
                     yield event.plain_result(text)
         elif cmd == "rd":
             text = await self.handle_roll_dice(event, expr, remark)
             if text:
                 adapter = get_adapter(event)
-                sent = await adapter.send_group_message(event, text, reply=True)
+                sent = await adapter.send_message(event, text, reply=True)
                 if not sent:
                     yield event.plain_result(text)
         elif cmd == "rh":
@@ -191,7 +205,7 @@ class RouterMixin:
             text = await self.roll_attribute(event, expr_raw, skill_value)
             if text:
                 adapter = get_adapter(event)
-                sent = await adapter.send_group_message(event, text, reply=True)
+                sent = await adapter.send_message(event, text, reply=True)
                 if not sent:
                     yield event.plain_result(text)
         elif cmd == "rab":
@@ -201,7 +215,7 @@ class RouterMixin:
             text = await self.roll_attribute_bonus(event, dice_count, expr_raw, skill_value)
             if text:
                 adapter = get_adapter(event)
-                sent = await adapter.send_group_message(event, text, reply=True)
+                sent = await adapter.send_message(event, text, reply=True)
                 if not sent:
                     yield event.plain_result(text)
         elif cmd == "rap":
@@ -211,7 +225,7 @@ class RouterMixin:
             text = await self.roll_attribute_penalty(event, dice_count, expr_raw, skill_value)
             if text:
                 adapter = get_adapter(event)
-                sent = await adapter.send_group_message(event, text, reply=True)
+                sent = await adapter.send_message(event, text, reply=True)
                 if not sent:
                     yield event.plain_result(text)
         elif cmd == "en":
@@ -221,7 +235,7 @@ class RouterMixin:
             text = await self.pc_grow_up(event, expr_raw, skill_value)
             if text:
                 adapter = get_adapter(event)
-                sent = await adapter.send_group_message(event, text, reply=True)
+                sent = await adapter.send_message(event, text, reply=True)
                 if not sent:
                     yield event.plain_result(text)
 
@@ -305,6 +319,16 @@ class RouterMixin:
                 yield result
         elif cmd == "setcoc":
             async for result in self.setcoc_cmd(event, expr_raw if expr_raw else " "):
+                yield result
+
+        # --- 插件介绍 / 总开关 ---
+        elif cmd == "bot":
+            async for result in self.bot_command(event, expr_raw):
+                yield result
+
+        # --- 退群 ---
+        elif cmd == "dismiss":
+            async for result in self.dismiss_group(event):
                 yield result
 
         # --- 人物卡属性 ---

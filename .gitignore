@@ -43,6 +43,7 @@ component/data/
 data/cocrule.db
 data/group_logs
 data/plugin_overrides.json
+data/bot_state.json
 V20_char_sheet/char_sheet.db
 .log
 

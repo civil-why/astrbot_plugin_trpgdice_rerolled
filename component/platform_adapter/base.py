@@ -47,7 +47,33 @@ class BasePlatformAdapter(ABC):
         """是否支持修改群名片/昵称。"""
         return False
 
+    @property
+    def supports_group_leave(self) -> bool:
+        """是否支持机器人主动退群。"""
+        return False
+
     # ── 消息发送 ──────────────────────────────────────────
+
+    async def send_message(
+        self,
+        event: AstrMessageEvent,
+        text: str,
+        *,
+        reply: bool = True,
+    ) -> bool:
+        """按会话类型自动选择发送方式：群聊走群消息，私聊走私聊消息。
+
+        Returns:
+            True 表示已通过平台 API 发送；False 表示发送失败或平台不支持，
+            调用方应回退到 ``yield event.plain_result(text)``。
+        """
+        try:
+            if event.get_group_id():
+                return await self.send_group_message(event, text, reply=reply)
+            return await self.send_private_message(event, text)
+        except Exception as exc:
+            print(f"[TRPGDice] 发送消息失败: {exc}")
+            return False
 
     @abstractmethod
     async def send_group_message(
@@ -105,6 +131,17 @@ class BasePlatformAdapter(ABC):
         card: str,
     ) -> bool:
         """修改发送者的群名片。
+
+        Returns:
+            是否成功执行。默认返回 False 表示不支持。
+        """
+        return False
+
+    async def leave_group(
+        self,
+        event: AstrMessageEvent,
+    ) -> bool:
+        """让机器人主动退出事件所在的群。
 
         Returns:
             是否成功执行。默认返回 False 表示不支持。

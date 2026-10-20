@@ -33,6 +33,10 @@ class TelegramAdapter(BasePlatformAdapter):
     def supports_group_card(self) -> bool:
         return False
 
+    @property
+    def supports_group_leave(self) -> bool:
+        return True
+
     # ── 工具方法 ──────────────────────────────────────────
 
     def _get_client(self, event: AstrMessageEvent) -> ExtBot:
@@ -77,6 +81,20 @@ class TelegramAdapter(BasePlatformAdapter):
             return False
 
         await client.send_message(chat_id=user_id, text=text)
+        return True
+
+    # ── 群组管理 ──────────────────────────────────────────
+
+    async def leave_group(
+        self,
+        event: AstrMessageEvent,
+    ) -> bool:
+        chat_id = event.get_group_id()
+        if not chat_id:
+            return False
+
+        client = self._get_client(event)
+        await client.leave_chat(chat_id=chat_id)
         return True
 
     # ── 用户信息 ──────────────────────────────────────────

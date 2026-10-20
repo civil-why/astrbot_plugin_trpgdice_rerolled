@@ -1,4 +1,29 @@
 output:
+  # ---------- 骰娘介绍与总开关 ----------
+  bot:
+    info: |-
+      📖 {name} {version}
+      状态：{status}　平台：{platform}　已运行：{uptime}
+      命令前缀：{prefix}
+      当前人物卡：{card}
+
+      · 掷骰：.r 1d100 / .rh / .rd 20
+      · 检定：.ra 侦查 / .sc 1d3/1d6 / .en 聆听
+      · 人物卡：.pc create|show|list|change|update|delete / .st 力量35
+      · 其他：.ti .li .init .ri .log .dicehelp
+      · 开关：.bot off 暂停本插件 / .bot on 恢复
+    status_on: "✅ 运行中"
+    status_off: "⛔ 已关闭"
+    on: "✅ 已重新开启{scope}的骰娘功能，掷骰、人物卡与日志恢复正常。"
+    off: "⛔ 已关闭{scope}的骰娘功能（掷骰 / 人物卡 / 日志 / 先攻）。其它群聊、其他插件与 LLM 对话不受影响，发送 .bot on 可重新开启。"
+    already_on: "{scope}的骰娘功能已经处于开启状态。"
+    already_off: "{scope}的骰娘功能已经处于关闭状态，发送 .bot on 可重新开启。"
+    usage: "用法：.bot 查看介绍 ｜ .bot on 开启 ｜ .bot off 关闭"
+    dismiss: "👋 收到，骰娘先退群啦，后会有期～"
+    dismiss_private: "这个指令要在群里使用哦。"
+    dismiss_unsupported: "当前平台不支持自动退群，请手动把骰娘移出群聊。"
+    dismiss_failed: "退群失败：{error}"
+
   # ---------- 技能判定 ----------
   skill_check:
     normal: "<{name}> 的【{skill_name}】检定: {roll_result}/{skill_value} → {result}"
@@ -199,6 +224,13 @@ output:
     export_failed: "日志导出失败：{error}"
     send_file_failed: "发送日志文件失败：{error}"
     delete_error: "删除日志失败。正确用法：.log del <日志名>"
+
+# ---------- 骰娘开关（按群独立） ----------
+bot:
+  # 自定义 .bot 介绍内容，留空则使用 output.bot.info
+  intro: ""
+  # 某个群从未切换过开关时的默认状态
+  default_enabled: true
 
 # ---------- 骰子配置 ----------
 dice:

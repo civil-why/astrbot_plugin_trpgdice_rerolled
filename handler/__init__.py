@@ -1,5 +1,7 @@
 from .dice_handler import DiceMixin
 from .character_handler import CharacterMixin
+from .bot_handler import BotMixin
+from .dismiss_handler import DismissMixin
 from .coc_handler import CoCMixin
 from .initiative_handler import InitiativeMixin
 from .log_handler import LogMixin

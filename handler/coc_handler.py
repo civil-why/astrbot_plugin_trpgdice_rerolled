@@ -178,7 +178,7 @@ class CoCMixin:
         await self.save_log(group_id=event.get_group_id(), content=text)
 
         adapter = get_adapter(event)
-        sent = await adapter.send_group_message(event, text, reply=True)
+        sent = await adapter.send_message(event, text, reply=True)
         if not sent:
             yield event.plain_result(text)
 

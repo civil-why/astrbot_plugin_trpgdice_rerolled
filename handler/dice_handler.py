@@ -61,7 +61,9 @@ class DiceMixin:
         message = message.strip() if message else f"1d{default_dice}"
 
         notice_text = get_output("dice.hidden.group")
-        yield event.plain_result(notice_text)
+        # 群里掷暗骰才提示「已进行隐藏掷骰」；私聊里结果本来只有自己看得到
+        if event.get_group_id():
+            yield event.plain_result(notice_text)
 
         private_text = dice_mod.roll_hidden(message)
         private_text = await self._beautify(private_text, event)

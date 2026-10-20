@@ -21,6 +21,8 @@ from .component.log import JSONLoggerCore
 from .handler import (
     DiceMixin,
     CharacterMixin,
+    BotMixin,
+    DismissMixin,
     CoCMixin,
     InitiativeMixin,
     LogMixin,
@@ -40,10 +42,12 @@ _LLM_DEFAULT_SYSTEM_PROMPT = (
 )
 
 
-@register("astrbot_plugin_trpgdice_rerolled", "星空凌", "TRPG玩家用骰", "1.5.1")
+@register("astrbot_plugin_trpgdice_rerolled", "星空凌", "TRPG玩家用骰", "1.6.0")
 class DicePlugin(
     DiceMixin,
     CharacterMixin,
+    BotMixin,
+    DismissMixin,
     CoCMixin,
     InitiativeMixin,
     LogMixin,
@@ -54,6 +58,7 @@ class DicePlugin(
     def __init__(self, context: Context, config: AstrBotConfig):
         self.wakeup_prefix = [".", "。", "/"]
         self.logger_core = logger_core
+        self.start_time = time.time()  # 供 .bot 显示本次运行时长
         # 初始化配置系统
         set_config(config)
 
@@ -149,6 +154,12 @@ class DicePlugin(
             "`/ri x [角色名]` - 将角色（默认为用户名）的先攻设置为x\n"
             "`/ed` - 结束当前回合\n"
             "`/fireball n` - 施放 n 环火球术，计算伤害\n\n"
+
+            "插件介绍与开关（按群独立，群内所有人可用）\n"
+            "`/bot` - 查看骰娘简介（可在插件配置中自定义）\n"
+            "`/bot off` - 关闭本群骰娘功能（不影响其它群与其他插件）\n"
+            "`/bot on` - 重新开启本群\n"
+            "`/dismiss` - 立即让骰娘退出本群（任何人可用）\n\n"
 
             "Log 管理\n"
             "`/log new <日志名>` - 开始新的日志会话\n"

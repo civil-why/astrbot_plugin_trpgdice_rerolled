@@ -6,6 +6,37 @@
 
 ---
 
+## [1.6.0] - 2026-10-21
+
+### ✨ 新增功能
+
+- **`.bot` 骰娘介绍** — 立即输出一段简介（插件名/版本、本群开关状态、平台、本次运行时长、当前人物卡、玩法速览）
+  - 可在 Astrbot 插件配置 → `bot.intro` 中整段自定义，或修改 `output.bot.info` 模板
+  - 支持 `{name}` `{version}` `{status}` `{platform}` `{prefix}` `{card}` `{uptime}` `{scope}` 等占位符
+- **`.bot off` / `.bot on` 按群开关** — 只关闭当前群聊的掷骰、人物卡、日志、先攻与 LLM 工具
+  - 群内所有成员均可开关，不需要管理员权限
+  - 开关按群号（私聊按会话）彼此独立，互不影响；状态写入 `data/bot_state.json`，重启后保持
+  - 关闭期间仍放行 `.bot`（可查看状态、重新开启）
+  - 只拦截本插件自身的指令与日志记录，不调用 `stop_event`，Astrbot 本体、LLM 对话与其他插件不受影响
+- **`.dismiss` 退群指令** — 任何人发送后骰娘先留一句告别语，随即退出该群
+  - OneBot/QQ 走 `set_group_leave`，Telegram 走 `leave_chat`；其他平台提示手动移除
+  - 不受 `.bot off` 影响（关闭本群功能后仍可退群）
+
+### 🐛 修复
+
+- **私聊无法掷骰** — 私聊时 `get_nickname()` 仍去查询群成员信息（群号为空）直接抛错，且结果始终通过「群消息」接口发送
+  - 私聊改为直接使用发送者昵称；群名片查询失败时同样回退到昵称，不再让整条指令失败
+  - 新增 `adapter.send_message()`，按会话类型自动选择群消息 / 私聊消息；`.r` `.rd` `.ra` `.rab` `.rap` `.en` `.sc` 在私聊中均可正常使用
+  - `.rh` 在私聊中不再先发「已进行隐藏掷骰」提示
+  - 平台发送失败时统一回退到 `plain_result`，不再因 API 异常导致静默无响应
+
+### 🔧 其他调整
+
+- 新增 `component/bot_switch.py`（按群开关状态）、`handler/bot_handler.py`（`.bot` 实现）、`handler/dismiss_handler.py`（`.dismiss` 实现）
+- 平台适配器新增 `supports_group_leave` / `leave_group()` 接口
+- `identify_command` 改为先解析命令词再记录日志，关闭某个群后该群不再产生日志落盘
+- `.dicehelp` 增加 `.bot` / `.dismiss` 指令说明；README 同步更新
+
 ## [1.5.1] - 2026-07-28
 
 ### 🐛 Bug 修复
