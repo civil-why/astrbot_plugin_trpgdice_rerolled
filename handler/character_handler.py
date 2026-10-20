@@ -35,7 +35,86 @@ class CharacterMixin:
         full_expr = (str(attributes) if attributes else "") + (str(exp) if exp else "")
         attributes_clean = re.sub(r'\s+', '', full_expr)
 
-        # 正则匹配属性名 + 可选运算符 + 可选值（支持 san50, san+50, san +50, san*2, san+2d6）
+        # 批量解析：
+        # 1. 优先用已有属性名匹配，避免 "sansan值理智理智值" 这类连续无数字属性被合并；
+        # 2. 未知属性名用通用规则匹配，因此 .st 也可以顺便新增属性；
+        # 3. 只有解析出多于 1 个属性时才走批量逻辑，单个属性仍完全保留原逻辑。
+        known_keys = sorted(chara_data["attributes"].keys(), key=len, reverse=True)
+        known_pattern = re.compile(
+            r"(" + "|".join(re.escape(k) for k in known_keys) + r")\s*([+\-*]?)\s*(\d+(?:d\d+)?|\d*)"
+        ) if known_keys else None
+        generic_pattern = re.compile(
+            r"([\u4e00-\u9fa5a-zA-Z]+)\s*([+\-*]?)\s*(\d+(?:d\d+)?|\d*)"
+        )
+
+        tokens = []
+        pos = 0
+        while pos < len(attributes_clean):
+            match = known_pattern.match(attributes_clean, pos) if known_pattern else None
+            if not match:
+                match = generic_pattern.match(attributes_clean, pos)
+            if not match:
+                tokens = []
+                break
+            tokens.append((match.group(1), match.group(2) or None, match.group(3) or None))
+            pos = match.end()
+
+        # 多个属性：批量更新，并允许新增属性
+        if len(tokens) > 1:
+            responses = []
+            for attribute, operator, value_expr in tokens:
+                if attribute not in chara_data["attributes"]:
+                    chara_data["attributes"][attribute] = 0
+
+                current_value = chara_data["attributes"][attribute]
+                value_num = 0
+                roll_detail = ""
+
+                if value_expr and 'd' in value_expr.lower():
+                    dice_match = re.match(r"(\d*)d(\d+)", value_expr.lower())
+                    if dice_match:
+                        dice_count = int(dice_match.group(1)) if dice_match.group(1) else 1
+                        dice_faces = int(dice_match.group(2))
+                        rolls = dice_mod.roll_dice(dice_count, dice_faces)
+                        value_num = sum(rolls)
+                        roll_detail = get_output(
+                            "dice.detail",
+                            detail=f"[{' + '.join(map(str, rolls))}] = {value_num}"
+                        )
+                elif value_expr:
+                    try:
+                        value_num = int(value_expr)
+                    except ValueError:
+                        yield event.plain_result(get_output("pc.show.invalid_value", value=value_expr))
+                        return
+
+                if operator == "+":
+                    new_value = current_value + value_num
+                elif operator == "-":
+                    new_value = current_value - value_num
+                elif operator == "*":
+                    new_value = current_value * value_num
+                else:
+                    new_value = value_num
+
+                chara_data["attributes"][attribute] = max(0, new_value)
+                response = get_output(
+                    "pc.update.success",
+                    attr=attribute,
+                    old=current_value,
+                    new=new_value
+                )
+                if roll_detail:
+                    response += "\n" + roll_detail
+                responses.append(response)
+
+            charmod.save_character(user_id, chara_id, chara_data)
+            response = "\n".join(responses)
+            await self.save_log(group_id=event.get_group_id(), content=response)
+            yield event.plain_result(response)
+            return
+
+        # 下面保持原有单属性逻辑不变
         match = re.match(r"([\u4e00-\u9fa5a-zA-Z]+)\s*([+\-*]?)\s*(\d+(?:d\d+)?|\d*)", attributes_clean)
         if not match:
             yield event.plain_result(get_output("pc.show.attr_missing", attribute=attributes_clean))
@@ -53,7 +132,6 @@ class CharacterMixin:
 
         value_num = 0
         roll_detail = ""
-        # 判断是不是掷骰
         if value_expr and 'd' in value_expr.lower():
             dice_match = re.match(r"(\d*)d(\d+)", value_expr.lower())
             if dice_match:
@@ -70,14 +148,13 @@ class CharacterMixin:
                 yield event.plain_result(get_output("pc.show.invalid_value", value=value_expr))
                 return
 
-        # 根据运算符计算新值
         if operator == "+":
             new_value = current_value + value_num
         elif operator == "-":
             new_value = current_value - value_num
         elif operator == "*":
             new_value = current_value * value_num
-        else:  # 无运算符，直接赋值
+        else:
             new_value = value_num
 
         chara_data["attributes"][attribute] = max(0, new_value)
