@@ -231,6 +231,53 @@ def create_character(user_id: str, name: str, attributes: dict):
     set_current_character(user_id, chara_id)
     return chara_id
 
+# 默认人物卡属性（与 .pc create 的初始值保持一致）
+DEFAULT_ATTRIBUTES_DATA = (
+    "力量0str0敏捷0dex0意志0pow0体质0con0外貌0app0教育0知识0edu0"
+    "体型0siz0智力0灵感0int0san0san值0理智0理智值0幸运0运气0mp0魔法0hp0"
+    "体力0会计5人类学1估价5考古学1取悦15攀爬20计算机5计算机使用5电脑5"
+    "信用0信誉0信用评级0克苏鲁0克苏鲁神话0cm0乔装5闪避0汽车20驾驶20汽车驾驶20"
+    "电气维修10电子学1话术5斗殴25手枪20急救30历史5恐吓15跳跃20拉丁语1母语0"
+    "法律5图书馆20图书馆使用20聆听20开锁1撬锁1锁匠1机械维修10医学1博物学10"
+    "自然学10领航10导航10神秘学5重型操作1重型机械1操作重型机械1重型1说服10"
+    "精神分析1心理学10骑术5妙手10侦查25潜行20生存10游泳20投掷20追踪10驯兽5"
+    "潜水1爆破1读唇1催眠1炮术1"
+)
+
+
+def default_attributes() -> dict:
+    """生成默认人物卡的初始属性字典。"""
+    attributes = {
+        attr: int(value)
+        for attr, value in re.findall(r"([\u4e00-\u9fa5a-zA-Z]+)(\d+)", DEFAULT_ATTRIBUTES_DATA)
+    }
+    attributes["max_hp"] = (attributes.get("siz", 0) + attributes.get("con", 0)) // 10
+    attributes["max_san"] = attributes.get("pow", 0)
+    return attributes
+
+
+def get_current_character_name(user_id: str):
+    """当前人物卡的名字，没有人物卡时返回 None。"""
+    chara_data = get_current_character(user_id)
+    if not chara_data:
+        return None
+    name = str(chara_data.get("name") or "").strip()
+    return name or None
+
+
+def get_or_create_character(user_id: str, name: str) -> str:
+    """按名字获取人物卡并设为当前卡；同名卡不存在时用默认属性新建。
+
+    用于直接使用 ``.st`` 时自动以平台昵称建卡。
+    """
+    name = sanitize_name(name or "调查员")
+    characters = get_all_characters(user_id)
+    if name in characters:
+        chara_id = characters[name]
+        set_current_character(user_id, chara_id)
+        return chara_id
+    return create_character(user_id, name, default_attributes())
+
 def delete_character(user_id: str, name: str):
     """
     删除指定名字的人物卡。

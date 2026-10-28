@@ -367,7 +367,7 @@ def _get_fortune(rp: int):
     return "末吉", FORTUNE_REPLIES["末吉"]  # fallback
 
 
-def roll_RP(user_id: str):
+def roll_RP(user_id: str, name: str = "你"):
     """今日RP（运势），返回字符串。"""
     max_rp = get_config("dice.rp.max_value", 100)
     today = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -375,4 +375,4 @@ def roll_RP(user_id: str):
     hash = hashlib.sha256(RP_str.encode()).hexdigest()
     rp = int(hash, 16) % max_rp + 1
     fortune, reply = _get_fortune(rp)
-    return get_output("rp.today", rp=rp, fortune=fortune, reply=reply)
+    return get_output("rp.today", rp=rp, fortune=fortune, reply=reply, name=name)

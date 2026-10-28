@@ -24,8 +24,7 @@ class CoCMixin:
         if skill_value is None:
             skill_value = charmod.get_skill_value(user_id, skill_name)
 
-        adapter = get_adapter(event)
-        name = await adapter.get_nickname(event)
+        name = await self.get_roll_display_name(event)
         result_message = dice_mod.roll_attribute(skill_name, skill_value, str(group_id), name)
         result_message = await self._beautify(result_message, event)
         await self.save_log(group_id=event.get_group_id(), content=result_message)
@@ -53,8 +52,7 @@ class CoCMixin:
         if skill_value is None:
             skill_value = charmod.get_skill_value(user_id, skill_name)
 
-        adapter = get_adapter(event)
-        name = await adapter.get_nickname(event)
+        name = await self.get_roll_display_name(event)
         result_message = dice_mod.roll_attribute_penalty(dice_count, skill_name, skill_value, str(group_id), name)
         result_message = await self._beautify(result_message, event)
         await self.save_log(group_id=event.get_group_id(), content=result_message)
@@ -82,8 +80,7 @@ class CoCMixin:
         if skill_value is None:
             skill_value = charmod.get_skill_value(user_id, skill_name)
 
-        adapter = get_adapter(event)
-        name = await adapter.get_nickname(event)
+        name = await self.get_roll_display_name(event)
         result_message = dice_mod.roll_attribute_bonus(dice_count, skill_name, skill_value, str(group_id), name)
         result_message = await self._beautify(result_message, event)
         await self.save_log(group_id=event.get_group_id(), content=result_message)

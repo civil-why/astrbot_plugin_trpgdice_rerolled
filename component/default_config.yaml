@@ -78,6 +78,7 @@ output:
     create:
       duplicate: "人物卡 [{name}] 已存在"
       success: "人物卡 [{name}] 已创建 (ID: {id})"
+      default: "未找到人物卡，已用当前昵称「{name}」创建默认人物卡。"
     show:
       no_active: "未选择人物卡 (.pc change)"
       load_fail: "人物卡 ID {id} 不存在"

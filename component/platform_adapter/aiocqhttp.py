@@ -45,7 +45,6 @@ class AiocqhttpAdapter(BasePlatformAdapter):
     ) -> bool:
         client = event.bot
         group_id = event.get_group_id()
-        user_id = event.get_sender_id()
 
         # 私聊没有群号，交给调用方回退到私聊发送
         if not group_id:
@@ -53,11 +52,11 @@ class AiocqhttpAdapter(BasePlatformAdapter):
 
         chain: list[dict] = []
 
+        # 只引用原消息，不再 @ 发送者
         if reply and hasattr(event.message_obj, "message_id") and event.message_obj.message_id:
             chain.append({"type": "reply", "data": {"id": event.message_obj.message_id}})
-            chain.append({"type": "at", "data": {"qq": user_id}})
 
-        chain.append({"type": "text", "data": {"text": "\n" + text}})
+        chain.append({"type": "text", "data": {"text": text}})
 
         try:
             await client.api.call_action("send_group_msg", **{

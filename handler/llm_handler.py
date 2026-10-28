@@ -33,7 +33,8 @@ class LLMToolsMixin:
         if not bot_switch.is_enabled(bot_switch.session_key(event)):
             return self._BOT_DISABLED
         expression = expression.strip()[:200]
-        return dice_mod.handle_roll_dice(expression, name=event.get_sender_name())
+        name = await self.get_roll_display_name(event)
+        return dice_mod.handle_roll_dice(expression, name=name)
 
     @filter.llm_tool(name="skill_check")
     async def llm_tool_skill_check(self, event: AstrMessageEvent, skill_name: str, skill_value: int) -> Optional[str]:
@@ -48,7 +49,7 @@ class LLMToolsMixin:
         skill_name = skill_name.strip()[:30]
         skill_value = max(0, min(int(skill_value), 100))
         group_id = str(event.get_group_id() or "0")
-        name = event.get_sender_name()
+        name = await self.get_roll_display_name(event)
         return dice_mod.roll_attribute(skill_name, skill_value, group_id, name)
 
     @filter.llm_tool(name="san_check")
@@ -119,7 +120,8 @@ class LLMToolsMixin:
         """查询今日运势（JRRP），结果基于用户ID和日期生成，每日固定。"""
         if not bot_switch.is_enabled(bot_switch.session_key(event)):
             return self._BOT_DISABLED
-        return dice_mod.roll_RP(event.get_sender_id())
+        name = await self.get_roll_display_name(event)
+        return dice_mod.roll_RP(event.get_sender_id(), name)
 
     @filter.llm_tool(name="set_output_template")
     async def llm_tool_set_output_template(self, event: AstrMessageEvent, template_key: str, template_value: str) -> Optional[str]:

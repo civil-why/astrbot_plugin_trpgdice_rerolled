@@ -42,8 +42,7 @@ class DiceMixin:
         """普通掷骰，返回结果文本（由调用方负责平台发送）。"""
         message = message.strip() if message else None
 
-        adapter = get_adapter(event)
-        name = await adapter.get_nickname(event)
+        name = await self.get_roll_display_name(event)
 
         default_dice = get_config("dice.default_faces", 100)
 

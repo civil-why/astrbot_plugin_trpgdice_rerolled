@@ -132,7 +132,8 @@ class DicePlugin(
             "`/pc list` - 列出所有人物卡\n"
             "`/pc change 名称` - 切换当前人物卡\n"
             "`/pc update 属性 值/公式` - 更新人物卡属性\n"
-            "`/pc delete 名称` - 删除人物卡\n\n"
+            "`/pc delete 名称` - 删除人物卡\n"
+            "`/st 属性+值` - 修改属性（没有人物卡时自动以当前昵称建卡）\n\n"
 
             "CoC 相关\n"
             "`/coc x` - 生成 x 个 CoC 角色数据\n"
@@ -183,7 +184,8 @@ class DicePlugin(
     @filter.command("jrrp")
     async def roll_RP_cmd(self, event: AstrMessageEvent):
         user_id = event.get_sender_id()
-        result = dice_mod.roll_RP(user_id)
+        name = await self.get_roll_display_name(event)
+        result = dice_mod.roll_RP(user_id, name)
         result = await self._beautify(result, event)
         yield event.plain_result(result)
 

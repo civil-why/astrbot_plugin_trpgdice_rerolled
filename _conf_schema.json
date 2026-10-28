@@ -160,9 +160,9 @@
         "type": "object",
         "items": {
           "today": {
-            "description": "运势查询 (变量: rp, fortune, reply)",
+            "description": "运势查询 (变量: name, rp, fortune, reply)",
             "type": "text",
-            "default": "今日的运势指数是 {rp}/100，评级为【{fortune}】\n{reply}"
+            "default": "{name}今日的运势指数是 {rp}/100，评级为【{fortune}】\n{reply}"
           }
         }
       },
@@ -256,6 +256,11 @@
                 "description": "创建成功 (变量: name, id)",
                 "type": "text",
                 "default": "人物卡 [{name}] 已创建 (ID: {id})"
+              },
+              "default": {
+                "description": "直接使用 .st 时自动建卡的提示 (变量: name)",
+                "type": "text",
+                "default": "未找到人物卡，已用当前昵称「{name}」创建默认人物卡。"
               }
             }
           },

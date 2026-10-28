@@ -19,6 +19,17 @@ from ..component.platform_adapter import get_adapter
 
 class CharacterMixin:
 
+    async def get_roll_display_name(self, event) -> str:
+        """掷骰/检定输出中的称呼：优先当前人物卡名，没有人物卡时回退平台昵称。"""
+        name = charmod.get_current_character_name(event.get_sender_id())
+        if name:
+            return name
+        try:
+            adapter = get_adapter(event)
+            return await adapter.get_nickname(event)
+        except Exception:
+            return event.get_sender_name()
+
     @filter.command("st")
     async def status(self, event: AstrMessageEvent, attributes: str = None, exp: str = None):
         """人物卡属性更新 / 掷骰"""
@@ -27,11 +38,23 @@ class CharacterMixin:
 
         user_id = event.get_sender_id()
         chara_id = charmod.get_current_character_id(user_id)
+        is_new_character = False
         if not chara_id:
-            yield event.plain_result(get_output("pc.show.no_active"))
-            return
+            # 直接使用 .st 时，以当前平台昵称自动创建一张默认人物卡
+            default_name = charmod.sanitize_name(event.get_sender_name() or "调查员")
+            existing_names = charmod.get_all_characters(user_id)
+            chara_id = charmod.get_or_create_character(user_id, default_name)
+            is_new_character = default_name not in existing_names
 
         chara_data = charmod.load_character(user_id, chara_id)
+        if not chara_data:
+            yield event.plain_result(get_output("pc.show.load_fail", id=chara_id))
+            return
+
+        created_note = ""
+        if is_new_character:
+            created_note = get_output("pc.create.default", name=chara_data.get("name", ""))
+
         full_expr = (str(attributes) if attributes else "") + (str(exp) if exp else "")
         attributes_clean = re.sub(r'\s+', '', full_expr)
 
@@ -110,6 +133,8 @@ class CharacterMixin:
 
             charmod.save_character(user_id, chara_id, chara_data)
             response = "\n".join(responses)
+            if created_note:
+                response = created_note + "\n" + response
             await self.save_log(group_id=event.get_group_id(), content=response)
             yield event.plain_result(response)
             return
@@ -163,6 +188,8 @@ class CharacterMixin:
         response = get_output("pc.update.success", attr=attribute, old=current_value, new=new_value)
         if roll_detail:
             response += "\n" + roll_detail
+        if created_note:
+            response = created_note + "\n" + response
 
         await self.save_log(group_id=event.get_group_id(), content=response)
 
@@ -185,21 +212,9 @@ class CharacterMixin:
             yield event.plain_result(get_output("pc.create.duplicate", name=name))
             return
 
-        initial_data = (
-            "力量0str0敏捷0dex0意志0pow0体质0con0外貌0app0教育0知识0edu0"
-            "体型0siz0智力0灵感0int0san0san值0理智0理智值0幸运0运气0mp0魔法0hp0"
-            "体力0会计5人类学1估价5考古学1取悦15攀爬20计算机5计算机使用5电脑5"
-            "信用0信誉0信用评级0克苏鲁0克苏鲁神话0cm0乔装5闪避0汽车20驾驶20汽车驾驶20"
-            "电气维修10电子学1话术5斗殴25手枪20急救30历史5恐吓15跳跃20拉丁语1母语0"
-            "法律5图书馆20图书馆使用20聆听20开锁1撬锁1锁匠1机械维修10医学1博物学10"
-            "自然学10领航10导航10神秘学5重型操作1重型机械1操作重型机械1重型1说服10"
-            "精神分析1心理学10骑术5妙手10侦查25潜行20生存10游泳20投掷20追踪10驯兽5"
-            "潜水1爆破1读唇1催眠1炮术1"
-        )
+        attributes_dict = charmod.default_attributes()
 
         matches = re.findall(r"([\u4e00-\u9fa5a-zA-Z]+)(\d+)", attributes)
-        initial_matches = re.findall(r"([\u4e00-\u9fa5a-zA-Z]+)(\d+)", initial_data)
-        attributes_dict = {attr: int(value) for attr, value in initial_matches}
         for attr, val in matches:
             attributes_dict[attr] = int(val)
 
