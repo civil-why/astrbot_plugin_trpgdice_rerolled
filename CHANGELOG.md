@@ -28,6 +28,8 @@
 
 ### 🐛 修复
 
+- **私聊命令被默认 LLM 抢答 / 反馈很慢** — 私聊消息都会被 AstrBot 判定为 wake，插件回复后同一条 `.r` 还会被送进默认 LLM 对话链路
+  - 插件命中的命令现在统一标记为「已处理并已发送」，不再触发 AstrBot 默认 LLM 请求（群聊被 @ / 唤醒时同样生效）
 - **私聊无法掷骰** — 私聊时 `get_nickname()` 仍去查询群成员信息（群号为空）直接抛错，且结果始终通过「群消息」接口发送
   - 私聊改为直接使用发送者昵称；群名片查询失败时同样回退到昵称，不再让整条指令失败
   - 新增 `adapter.send_message()`，按会话类型自动选择群消息 / 私聊消息；`.r` `.rd` `.ra` `.rab` `.rap` `.en` `.sc` 在私聊中均可正常使用
@@ -38,6 +40,7 @@
 
 - 新增 `component/bot_switch.py`（按群开关状态）、`handler/bot_handler.py`（`.bot` 实现）、`handler/dismiss_handler.py`（`.dismiss` 实现）
 - 平台适配器新增 `supports_group_leave` / `leave_group()` 接口
+- LLM 美化新增 `llm_mode.timeout`（默认 15 秒），超时直接发送原始文本；修正 `text_chat()` 的 `contexts` 参数名
 - `identify_command` 改为先解析命令词再记录日志，关闭某个群后该群不再产生日志落盘
 - `.dicehelp` 增加 `.bot` / `.dismiss` 指令说明；README 同步更新
 

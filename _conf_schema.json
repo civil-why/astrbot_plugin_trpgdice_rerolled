@@ -31,7 +31,7 @@
       "model": {
         "description": "使用的模型 ID（留空则使用当前对话默认模型）",
         "type": "string",
-        "hint": "例如：gpt-4o、claude-3-5-sonnet，留空使用主对话模型",
+        "hint": "必须是「服务提供商」里当前 Provider 支持的模型 ID，例如 deepseek-v4-flash。API Key / Base URL 在该 Provider 中配置，本插件只覆盖模型名",
         "default": ""
       },
       "system_prompt": {
@@ -39,6 +39,17 @@
         "type": "text",
         "hint": "骰子原始结果文本会作为用户消息发送给 LLM，此处填写系统提示词",
         "default": "你是一个跑团骰娘，风格活泼可爱。请用简短生动的语言（不超过60字）描述以下掷骰结果，可以加入一点点角色扮演风格，但必须保留所有数字和判定结论。"
+      },
+      "timeout": {
+        "description": "美化请求超时（秒）",
+        "type": "int",
+        "slider": {
+          "min": 3,
+          "max": 120,
+          "step": 1
+        },
+        "hint": "超过该时间仍未返回就直接发送原始掷骰文本，避免 provider 卡住/重试时长时间没有反馈",
+        "default": 15
       }
     }
   },

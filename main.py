@@ -5,6 +5,7 @@
 命令路由集中在 handler/router.py 的 RouterMixin.identify_command() 中处理。
 """
 
+import asyncio
 import time
 
 from astrbot.api.star import Context, Star, register
@@ -85,11 +86,19 @@ class DicePlugin(
                 return raw_text
             system_prompt = get_config("llm_mode.system_prompt", _LLM_DEFAULT_SYSTEM_PROMPT) or _LLM_DEFAULT_SYSTEM_PROMPT
             model = get_config("llm_mode.model", "") or None
-            resp = await prov.text_chat(
-                prompt=raw_text,
-                context=[],
-                system_prompt=system_prompt,
-                model=model
+            # 美化只是锦上添花：给一个硬超时，provider 卡住/重试时也不拖住掷骰结果
+            try:
+                timeout = max(1, int(get_config("llm_mode.timeout", 15)))
+            except (TypeError, ValueError):
+                timeout = 15
+            resp = await asyncio.wait_for(
+                prov.text_chat(
+                    prompt=raw_text,
+                    contexts=[],
+                    system_prompt=system_prompt,
+                    model=model,
+                ),
+                timeout=timeout,
             )
             return resp.completion_text or raw_text
         except Exception:

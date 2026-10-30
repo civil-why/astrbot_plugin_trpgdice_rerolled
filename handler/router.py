@@ -20,6 +20,16 @@ from ..component.platform_adapter import get_adapter
 NOTICE_GROUP_RECALL = "group_recall"
 NOTICE_FRIEND_RECALL = "friend_recall"
 
+# 本插件处理的命令词。命中后要禁止 AstrBot 再把同一条消息送进默认 LLM 对话链路：
+# 私聊里所有消息都会被判定为 wake，插件回复之后 AstrBot 还会再让模型答一遍，
+# 表现为“LLM 抢答 / 迟迟没有掷骰反馈”。组聊里被 @ 或使用唤醒前缀时同理。
+PLUGIN_COMMANDS = {
+    "r", "rd", "rh", "ra", "rab", "rap", "en",
+    "sc", "ti", "li", "ri", "init", "ed",
+    "coc", "dnd", "dicehelp", "fireball", "jrrp", "setcoc",
+    "bot", "dismiss", "st", "sn", "pc", "log",
+}
+
 
 class RouterMixin:
 
@@ -81,6 +91,20 @@ class RouterMixin:
         if cmd not in ("bot", "dismiss") and not bot_switch.is_enabled(bot_switch.session_key(event)):
             return
         # ----------------------------------------------
+
+        # 命令由本插件处理，禁止 AstrBot 默认 LLM 对话链路再答一遍
+        # （私聊下所有消息都算 wake，不处理会出现“掷骰结果 + LLM 抢答”双重响应）
+        # 注意：AstrBot 4.29 的语义是 call_llm=True 表示“禁止默认 LLM 请求”，
+        # 同时标记已发送过消息，双保险兼容不同版本。
+        if cmd in PLUGIN_COMMANDS:
+            try:
+                event.should_call_llm(True)
+            except Exception:
+                pass
+            try:
+                event._has_send_oper = True
+            except Exception:
+                pass
 
         # ------------------- 日志收集 -------------------
         group_id = event.message_obj.group_id
