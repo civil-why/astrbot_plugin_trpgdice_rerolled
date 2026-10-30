@@ -231,6 +231,55 @@ class JSONLoggerCore:
         await self.persist_group(group_id)
         return True, get_output("log.session_paused", session_name=active[-1])
 
+    async def latest_paused_session(self, group_id: str) -> Tuple[Optional[str], Optional[dict]]:
+        """返回最近一次暂停的会话（用于 .log off 后的阶段总结）。"""
+        grp = await self.load_group(group_id)
+        paused = [
+            (name, sec)
+            for name, sec in grp.items()
+            if sec.get("end_time") is not None and not sec.get("finished", False)
+        ]
+        if not paused:
+            return None, None
+        return max(paused, key=lambda item: int(item[1].get("end_time") or 0))
+
+    async def save_session_summary(
+        self,
+        group_id: str,
+        name: str,
+        summary: str,
+        highlights: List[str],
+        cursor: Optional[int] = None,
+    ) -> bool:
+        """保存阶段总结与高光，并推进「已总结到第几条消息」的游标。
+
+        结构：
+          session["summaries"]  = [{"time", "summary", "highlights"}, ...]
+          session["highlights"] = [{"text", "time", "session"}, ...]  # 供绘图插件读取
+          session["summary_cursor"] = int
+        """
+        grp = await self.load_group(group_id)
+        sec = grp.get(name)
+        if not sec:
+            return False
+
+        now = int(time.time())
+        sec.setdefault("summaries", []).append(
+            {
+                "time": now,
+                "summary": summary,
+                "highlights": list(highlights),
+            }
+        )
+        stored = sec.setdefault("highlights", [])
+        for text in highlights:
+            stored.append({"text": text, "time": now, "session": name})
+        if cursor is not None:
+            sec["summary_cursor"] = int(cursor)
+
+        await self.persist_group(group_id)
+        return True
+
     async def end_session(self, group_id: str) -> Tuple[bool, Tuple[str, dict]]:
         grp = await self.load_group(group_id)
 

@@ -18,6 +18,68 @@
       }
     }
   },
+  "log_summary": {
+    "description": "日志阶段总结与高光提取",
+    "type": "object",
+    "hint": "每次 .log off 后自动总结本段剧情，并提取高光片段；结果保存在日志会话的 summaries / highlights 字段，供后续绘图插件读取",
+    "items": {
+      "enabled": {
+        "description": "是否启用 .log off 自动总结",
+        "type": "bool",
+        "default": true
+      },
+      "provider_id": {
+        "description": "总结使用的模型 Provider",
+        "type": "string",
+        "_special": "select_provider",
+        "hint": "留空则使用当前对话模型；也可以单独选一个更便宜/更适合总结的模型",
+        "default": ""
+      },
+      "model": {
+        "description": "总结使用的模型 ID",
+        "type": "string",
+        "hint": "留空则使用该 Provider 的默认模型；例如 deepseek-v4-flash",
+        "default": ""
+      },
+      "timeout": {
+        "description": "总结请求超时（秒）",
+        "type": "int",
+        "slider": {
+          "min": 10,
+          "max": 300,
+          "step": 5
+        },
+        "hint": "超时后放弃本次总结（日志仍已暂停）",
+        "default": 60
+      },
+      "max_chars": {
+        "description": "送入模型的最大字符数",
+        "type": "int",
+        "slider": {
+          "min": 1000,
+          "max": 30000,
+          "step": 500
+        },
+        "hint": "超出时保留最近的内容，避免日志过长撑爆上下文",
+        "default": 8000
+      },
+      "max_highlights": {
+        "description": "高光片段最大条数",
+        "type": "int",
+        "slider": {
+          "min": 1,
+          "max": 10,
+          "step": 1
+        },
+        "default": 5
+      },
+      "include_dice": {
+        "description": "是否把掷骰结果也送入总结",
+        "type": "bool",
+        "default": false
+      }
+    }
+  },
   "llm_mode": {
     "description": "LLM 模式配置",
     "type": "object",
@@ -815,6 +877,42 @@
             "description": "删除错误",
             "type": "text",
             "default": "删除日志失败。正确用法：.log del <日志名>"
+          },
+          "summary": {
+            "description": "阶段总结输出（.log off 后）",
+            "type": "object",
+            "items": {
+              "generating": {
+                "description": "生成中的提示（留空则不提示）",
+                "type": "text",
+                "default": "🖋️ 正在整理本段故事…"
+              },
+              "result": {
+                "description": "总结结果 (变量: session_name, summary, highlights)",
+                "type": "text",
+                "default": "📖 本段小结 · {session_name}\n\n{summary}\n\n✨ 高光时刻\n{highlights}"
+              },
+              "highlight_line": {
+                "description": "单条高光 (变量: index, text)",
+                "type": "text",
+                "default": "{index}. {text}"
+              },
+              "no_highlights": {
+                "description": "没有高光时的占位文本",
+                "type": "text",
+                "default": "（这一段似乎很平静）"
+              },
+              "empty": {
+                "description": "没有可总结内容时的提示",
+                "type": "text",
+                "default": "本段没有可总结的对话内容。"
+              },
+              "failed": {
+                "description": "生成失败提示 (变量: error)",
+                "type": "text",
+                "default": "⚠️ 本段小结生成失败：{error}"
+              }
+            }
           }
         }
       }

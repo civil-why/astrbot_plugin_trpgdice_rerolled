@@ -43,7 +43,7 @@ _LLM_DEFAULT_SYSTEM_PROMPT = (
 )
 
 
-@register("astrbot_plugin_trpgdice_rerolled", "星空凌", "TRPG玩家用骰", "1.6.0")
+@register("astrbot_plugin_trpgdice_rerolled", "星空凌", "TRPG玩家用骰", "1.7.0")
 class DicePlugin(
     DiceMixin,
     CharacterMixin,
@@ -173,7 +173,7 @@ class DicePlugin(
 
             "Log 管理\n"
             "`/log new <日志名>` - 开始新的日志会话\n"
-            "`/log off` - 暂停当前的日志会话\n"
+            "`/log off` - 暂停当前的日志会话（并生成本段小结 + 高光）\n"
             "`/log on` - 开始当前的日志会话\n"
             "`/log end` - 结束当前的日志会话\n"
             "`/log del <日志名>` - 删除日志会话\n"

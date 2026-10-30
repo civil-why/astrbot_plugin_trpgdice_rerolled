@@ -6,6 +6,24 @@
 
 ---
 
+## [1.7.0] - 2026-10-30
+
+### ✨ 新增功能
+
+- **`.log off` 阶段总结与高光提取**
+  - 暂停日志后自动把本段剧情交给 LLM：生成 150~300 字剧情小结 + 2~5 条高光片段
+  - 默认使用当前对话模型，也可在 `log_summary.provider_id` 单独指定 Provider、`log_summary.model` 指定模型
+  - 只总结「上次总结之后」的新消息（会话内的 `summary_cursor`），反复 on/off 不会重复概括
+  - 结果写入会话 JSON 的 `summaries` 与 `highlights` 字段，供后续绘图插件直接读取
+  - 新增配置：`log_summary.enabled` / `provider_id` / `model` / `timeout` / `max_chars` / `max_highlights` / `include_dice`
+  - 新增输出模板：`output.log.summary.*`（生成中提示、结果、单条高光、空日志、失败）
+
+### 🔧 其他调整
+
+- 新增 `component/summary.py`（对话记录整理、Prompt 构造、JSON 解析与容错）
+- `JSONLoggerCore` 新增 `latest_paused_session()` / `save_session_summary()`
+- `.dicehelp` 同步说明 `.log off` 会生成小结
+
 ## [1.6.0] - 2026-10-21
 
 ### ✨ 新增功能
