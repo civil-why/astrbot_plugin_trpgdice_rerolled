@@ -68,16 +68,22 @@
     - 默认使用当前对话模型，也可在 `log_summary.provider_id` / `log_summary.model` 单独指定
     - 只总结上次总结后的新消息，反复 on/off 不会重复概括
     - 结果保存在会话的 `summaries` / `highlights` 字段，供后续绘图插件读取
+  - **`.log draw` 高光配图**：手动把最近一段总结中的高光交给[万象画卷](https://github.com/diaomin66/astrbot_plugin_omnidraw)画成插图
+    - 默认手动触发，不会在 `.log off` 时自动生图（避免意外消耗额度）
+    - 支持 `.log draw`（第 1 条）、`.log draw 2`（第 2 条）、`.log draw all`（前几张）、`.log draw cover`（用整段小结画章节封面）
+    - 画风基准需在配置中手动填写；已生成的插图保存在 `data/highlight_images/`，重复执行默认复用
+    - 后台插件页「联动检查」可一键确认万象画卷是否安装、启用并配置好画图节点
 
 - **错误提示**
   - 参数不完整或格式错误时，自动给出正确的用法提示
   - 包含 `.ra`、`.en`、`.st`、`.pc`、`.log`、`.fireball` 等命令的校验
 
 - **LLM 美化模式**
-  - 可选开启，所有掷骰结果通过 LLM 进行风格化美化输出
+  - 默认 `decorate`：把玩家名、骰点、判定结果固定为 `core`，LLM 只写 `core` 前后的 prefix/suffix，数值与判定不会被改写
+  - 可切换 `rewrite`：LLM 重写整句话，兼容旧行为
   - 可单独指定更便宜的 Provider / 模型（`llm_mode.provider_id` / `llm_mode.model`），留空则使用当前会话模型
-  - 支持自定义系统提示词，默认使用活泼可爱的骰娘风格
-  - LLM 不可用时自动降级为普通模板输出，不影响正常使用
+  - 支持自定义提示词；系统会自动追加 `{"prefix":"...","suffix":"..."}` 的 JSON 输出协议
+  - LLM 不可用或返回格式不合法时自动回退为 `core`，不影响正常使用
 
 - **LLM 工具函数（Function Calling）**
   - 注册为 Astrbot Function Calling 工具，LLM 可以主动调用掷骰、技能检定等功能
@@ -165,6 +171,10 @@
   .log del <日志名>   # 删除日志
   .log get <日志名>   # 下载日志文件
   .log stat <日志名>  # 查看日志统计
+  .log draw           # 把最近一段的第 1 条高光画成插图
+  .log draw 2         # 画第 2 条高光
+  .log draw all       # 画前几条（数量受 max_per_call 限制）
+  .log draw cover     # 用整段小结画章节封面
   ```
 
 如需完整指令说明，请运行 `.dicehelp` 查看。
@@ -179,6 +189,7 @@
 
 - **bot** - 骰娘开关的默认状态、`.bot` 自定义介绍
 - **log_summary** - `.log off` 阶段总结：独立 Provider/模型、超时、字符上限、高光条数
+- **log_illustration** - `.log draw` 高光配图：绘图插件名、**画风基准（需手动修改）**、宽高比、超时、冷却、权限与额度策略
 - **output** - 所有输出文本模板（支持 `{变量名}` 占位符）
 - **dice** - 掷骰参数（默认面数、最大个数/面数等）
 - **initiative** - 先攻掷骰范围
@@ -186,6 +197,14 @@
 - **character** - COC/DND 角色生成骰子公式
 - **coc_rules** - 大成功/大失败规则
 - **growth** - 技能成长阈值
+
+### 高光配图与万象画卷联动
+
+1. 安装并启用 [万象画卷](https://github.com/diaomin66/astrbot_plugin_omnidraw)，在它的配置里填好至少一个「画图」节点（接口地址、模型、API Key）。
+2. 打开 AstrBot 后台 → 插件管理 → 骰娘 → **联动检查** 页面，点「开始检查」确认状态为就绪。
+3. 在骰娘配置的「高光时刻配图」中**手动填写画风基准**（`style_prompt`），例如「日系动画关键帧插画，干净线稿，赛璐璐上色」。
+4. 建议把万象画卷的副脑风格也改成插画风（如「日系插画大师」或「自定义模式」），否则副脑可能把提示词改写成日常摄影风。
+5. 跑团时先 `.log off` 生成小结与高光，再在群里用 `.log draw` 画出高光插图。
 
 ---
 

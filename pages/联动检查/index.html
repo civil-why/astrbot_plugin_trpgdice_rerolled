@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>联动检查</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --text: #1f2430;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --ok: #16a34a;
+      --warn: #d97706;
+      --err: #dc2626;
+      --accent: #4f46e5;
+      --chip: #eef0ff;
+    }
+
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #14161c;
+      --card: #1c1f27;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --line: #2c313c;
+      --ok: #4ade80;
+      --warn: #fbbf24;
+      --err: #f87171;
+      --accent: #a5b4fc;
+      --chip: #262b3a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Microsoft YaHei", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 24px 20px 48px;
+    }
+
+    .head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      font-size: 20px;
+      margin: 0 0 6px;
+      letter-spacing: .01em;
+    }
+
+    h2 {
+      font-size: 14px;
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-weight: 600;
+      letter-spacing: .02em;
+    }
+
+    .sub {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .btn {
+      flex: none;
+      border: 1px solid transparent;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s ease;
+    }
+
+    .btn:hover { opacity: .9; }
+    .btn:disabled { opacity: .55; cursor: default; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin-bottom: 14px;
+    }
+
+    .verdict {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 15px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex: none;
+      background: var(--muted);
+    }
+
+    .dot.ok { background: var(--ok); }
+    .dot.warn { background: var(--warn); }
+    .dot.err { background: var(--err); }
+
+    .muted { color: var(--muted); font-size: 12px; margin: 8px 0 0; }
+
+    .list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .list li {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 7px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .list li:first-child { border-top: 0; }
+
+    .row-label {
+      color: var(--muted);
+      font-size: 13px;
+      flex: none;
+    }
+
+    .row-value {
+      text-align: right;
+      font-size: 13px;
+      word-break: break-word;
+    }
+
+    .row-value.ok { color: var(--ok); }
+    .row-value.warn { color: var(--warn); }
+    .row-value.err { color: var(--err); }
+    .row-value.mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+    }
+
+    .chip {
+      display: inline-block;
+      background: var(--chip);
+      color: var(--accent);
+      border-radius: 999px;
+      padding: 1px 9px;
+      font-size: 12px;
+      margin-left: 6px;
+    }
+
+    .tips {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .tips li { margin: 4px 0; }
+
+    .error {
+      margin: 0 0 14px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--err) 12%, transparent);
+      color: var(--err);
+      font-size: 13px;
+    }
+
+    .footer-note {
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    @media (max-width: 560px) {
+      .head { flex-direction: column; }
+      .row-value { text-align: left; }
+      .list li { flex-direction: column; gap: 2px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="head">
+      <div>
+        <h1>万象画卷联动检查</h1>
+        <p class="sub">检查 <code>.log draw</code> 依赖的绘图插件是否安装、启用并配置好画图节点。只读检查，不会触发真实生图。</p>
+      </div>
+      <button id="refresh" class="btn" type="button">开始检查</button>
+    </header>
+
+    <p class="error" id="error" hidden></p>
+
+    <section class="card">
+      <div class="verdict">
+        <span class="dot" id="verdict-dot"></span>
+        <strong id="verdict-text">等待检查…</strong>
+      </div>
+      <p class="muted" id="checked-at"></p>
+    </section>
+
+    <section class="card">
+      <h2>万象画卷</h2>
+      <ul class="list" id="draw-list"></ul>
+    </section>
+
+    <section class="card">
+      <h2>高光配图配置</h2>
+      <ul class="list" id="dice-list"></ul>
+    </section>
+
+    <section class="card">
+      <h2>检查项说明</h2>
+      <ol class="tips">
+        <li><strong>安装 / 启用</strong>：万象画卷必须已安装且未被停用。</li>
+        <li><strong>生图接口</strong>：旧版本万象画卷没有 <code>generate_images_for_plugin</code>，无法被其他插件调用。</li>
+        <li><strong>画图链路</strong>：至少有一个 text2img 节点同时配置了接口地址、模型与 API Key。</li>
+        <li><strong>副脑风格</strong>：万象画卷默认会重写提示词；想保留跑团插画风，建议把副脑风格改成「日系插画大师 / 电影级光影大片」或自定义。</li>
+      </ol>
+    </section>
+
+    <p class="footer-note">
+      画风基准需要手动修改：AstrBot 后台 → 插件管理 → 骰娘 → 插件配置 → 「高光时刻配图」→ 画风基准。
+    </p>
+  </main>
+
+  <script type="module">
+    const bridgeWaitTimeoutMs = 3000;
+    const $ = (id) => document.getElementById(id);
+
+    const refreshBtn = $("refresh");
+    const errorBox = $("error");
+    const drawList = $("draw-list");
+    const diceList = $("dice-list");
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function withTimeout(promise, timeoutMs, message) {
+      return Promise.race([
+        promise,
+        new Promise((_, reject) => {
+          setTimeout(() => reject(new Error(message)), timeoutMs);
+        }),
+      ]);
+    }
+
+    function row(label, value, state = "") {
+      return `<li><span class="row-label">${escapeHtml(label)}</span>` +
+        `<span class="row-value ${state}">${value}</span></li>`;
+    }
+
+    function setVerdict(state, text) {
+      $("verdict-dot").className = `dot ${state}`;
+      $("verdict-text").textContent = text;
+    }
+
+    function shortText(value, maxLength = 120) {
+      const text = String(value ?? "").trim();
+      if (!text) return "<span class=\"muted\">（空）</span>";
+      const safe = escapeHtml(text);
+      return text.length > maxLength ? `${safe.slice(0, maxLength)}…` : safe;
+    }
+
+    async function waitBridge() {
+      const startedAt = Date.now();
+      while (!window.AstrBotPluginPage) {
+        if (Date.now() - startedAt > bridgeWaitTimeoutMs) {
+          throw new Error("后台桥接未加载，请刷新页面后重试。");
+        }
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      const bridge = window.AstrBotPluginPage;
+      if (typeof bridge.ready === "function") {
+        try {
+          await withTimeout(bridge.ready(), 1500, "context timeout");
+        } catch { /* 上下文不是必需，忽略 */ }
+      }
+      return bridge;
+    }
+
+    function renderDraw(draw) {
+      const installed = Boolean(draw.installed);
+      const activated = Boolean(draw.activated);
+      const apiAvailable = Boolean(draw.api_available);
+      const chainReady = Boolean(draw.chain_ready);
+
+      drawList.innerHTML = [
+        row("插件名", escapeHtml(draw.plugin_name || "astrbot_plugin_omnidraw"), "mono"),
+        row("安装状态", installed ? "已安装" : "未安装", installed ? "ok" : "err"),
+        row("启用状态", activated ? "已启用" : "已停用", activated ? "ok" : "err"),
+        row(
+          "生图接口",
+          apiAvailable ? "可用" : "不可用",
+          apiAvailable ? "ok" : "err",
+        ),
+        row(
+          "画图链路",
+          chainReady
+            ? `就绪 <span class="chip">${Number(draw.chain_nodes || 0)} 个节点</span>`
+            : "未就绪",
+          chainReady ? "ok" : "err",
+        ),
+        row(
+          "副脑优化",
+          draw.optimizer_enabled
+            ? `开启<span class="chip">${escapeHtml(draw.optimizer_style || "未指定风格")}</span>`
+            : "关闭",
+          draw.optimizer_enabled ? "warn" : "",
+        ),
+      ].join("");
+    }
+
+    function renderDice(dice) {
+      const permission = dice.respect_permission
+        ? `沿用${dice.record_usage ? "，并计入额度" : "，不计入额度"}`
+        : "不沿用";
+      diceList.innerHTML = [
+        row("高光配图", dice.enabled ? "已启用" : "未启用", dice.enabled ? "ok" : "warn"),
+        row("画风基准", shortText(dice.style_prompt)),
+        row("宽高比", escapeHtml(dice.aspect_ratio || "由绘图插件决定")),
+        row("权限 / 额度", escapeHtml(permission)),
+        row("all 单次上限", `${Number(dice.max_per_call || 3)} 张`),
+      ].join("");
+    }
+
+    function render(data) {
+      const draw = data.draw || {};
+      const dice = data.dice || {};
+      const ready = Boolean(
+        data.success &&
+        draw.installed &&
+        draw.activated &&
+        draw.api_available &&
+        draw.chain_ready,
+      );
+
+      if (!data.success) {
+        setVerdict("err", data.message || "检查失败");
+      } else if (ready) {
+        setVerdict("ok", "联动就绪，可以在群里使用 .log draw");
+      } else {
+        setVerdict("err", draw.message || data.message || "联动尚未就绪");
+      }
+
+      $("checked-at").textContent = data.checked_at
+        ? `检查时间：${new Date(data.checked_at * 1000).toLocaleString()}`
+        : "";
+
+      renderDraw(draw);
+      renderDice(dice);
+    }
+
+    async function check() {
+      refreshBtn.disabled = true;
+      refreshBtn.textContent = "检查中…";
+      errorBox.hidden = true;
+      try {
+        const bridge = await waitBridge();
+        const data = await withTimeout(
+          bridge.apiGet("check_draw"),
+          8000,
+          "检查超时，请刷新页面后重试。",
+        );
+        render(data || {});
+      } catch (err) {
+        setVerdict("err", "检查失败");
+        errorBox.hidden = false;
+        errorBox.textContent = `检查失败：${err && err.message ? err.message : err}`;
+        drawList.innerHTML = "";
+        diceList.innerHTML = "";
+      } finally {
+        refreshBtn.disabled = false;
+        refreshBtn.textContent = "重新检查";
+      }
+    }
+
+    refreshBtn.addEventListener("click", check);
+    check();
+  </script>
+</body>
+</html>

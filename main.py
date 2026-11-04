@@ -14,6 +14,12 @@ from astrbot.api import AstrBotConfig
 from .component.astrbot_compat import filter, AstrMessageEvent
 
 from .component import dice as dice_mod
+from .component import illustration as illustration_mod
+from .component.beautify import (
+    assemble_decoration,
+    ensure_protocol,
+    select_system_prompt,
+)
 from .component.output import get_output, get_config, set_config
 from .component.utils import roll_character, format_character, roll_dnd_character, format_dnd_character
 from .component.rules import modify_coc_great_sf_rule_command
@@ -31,19 +37,14 @@ from .handler import (
     RouterMixin,
 )
 
+PLUGIN_NAME = "astrbot_plugin_trpgdice_rerolled"
+
 logger_core = JSONLoggerCore()
 
 async def init():
     await logger_core.initialize()
 
-_LLM_DEFAULT_SYSTEM_PROMPT = (
-    "你是一个跑团骰娘，风格活泼可爱。"
-    "请用简短生动的语言（不超过60字）描述以下掷骰结果，"
-    "可以加入一点点角色扮演风格，但必须保留所有数字和判定结论。"
-)
-
-
-@register("astrbot_plugin_trpgdice_rerolled", "星空凌", "TRPG玩家用骰", "1.7.0")
+@register(PLUGIN_NAME, "星空凌", "TRPG玩家用骰", "2.1.1")
 class DicePlugin(
     DiceMixin,
     CharacterMixin,
@@ -60,10 +61,23 @@ class DicePlugin(
         self.wakeup_prefix = [".", "。", "/"]
         self.logger_core = logger_core
         self.start_time = time.time()  # 供 .bot 显示本次运行时长
+        self._illustration_times: dict[str, float] = {}  # 按群的配图冷却时间
+        self._illustration_busy: set[str] = set()  # 正在绘制的群，避免并发重复生图
         # 初始化配置系统
         set_config(config)
 
         super().__init__(context)
+
+        # 后台插件页「联动检查」调用的只读接口
+        try:
+            self.context.register_web_api(
+                f"/{PLUGIN_NAME}/check_draw",
+                self.check_draw_handler,
+                ["GET"],
+                "检查万象画卷插件与高光配图状态",
+            )
+        except Exception:
+            pass
 
     async def save_log(self, group_id, content):
         # TODO: 昵称应从配置读取，当前硬编码为 "风铃Velinithra"
@@ -92,14 +106,34 @@ class DicePlugin(
             return None
 
     async def _beautify(self, raw_text: str, event: AstrMessageEvent) -> str:
-        """若 LLM 模式已启用，将原始结果文本交给 LLM 美化后返回；否则原样返回。"""
+        """LLM 美化入口。
+
+        默认 decorate 模式：core 固定，模型只返回 prefix/suffix，最终拼接为
+        prefix + core + suffix，模型无法改写 core 里的数值与判定。
+        rewrite 模式保留旧行为：把整段文本交给模型重写。
+        """
         if not get_config("llm_mode.enabled", False):
             return raw_text
         try:
             prov = self._get_beautify_provider(event)
             if not prov:
                 return raw_text
-            system_prompt = get_config("llm_mode.system_prompt", _LLM_DEFAULT_SYSTEM_PROMPT) or _LLM_DEFAULT_SYSTEM_PROMPT
+
+            mode = str(get_config("llm_mode.output_mode", "decorate") or "decorate").strip()
+            if mode not in ("decorate", "rewrite"):
+                mode = "decorate"
+            configured_prompt = str(
+                get_config("llm_mode.system_prompt", "") or ""
+            ).strip()
+            base_prompt = select_system_prompt(mode, configured_prompt)
+
+            if mode == "decorate":
+                system_prompt = ensure_protocol(base_prompt)
+                prompt = f"core：\n{raw_text}"
+            else:
+                system_prompt = base_prompt
+                prompt = raw_text
+
             model = get_config("llm_mode.model", "") or None
             # 美化只是锦上添花：给一个硬超时，provider 卡住/重试时也不拖住掷骰结果
             try:
@@ -108,16 +142,65 @@ class DicePlugin(
                 timeout = 15
             resp = await asyncio.wait_for(
                 prov.text_chat(
-                    prompt=raw_text,
+                    prompt=prompt,
                     contexts=[],
                     system_prompt=system_prompt,
                     model=model,
                 ),
                 timeout=timeout,
             )
-            return resp.completion_text or raw_text
+            completion = resp.completion_text or ""
+            if mode == "decorate":
+                return assemble_decoration(raw_text, completion)
+            return completion or raw_text
         except Exception:
             return raw_text
+
+    async def check_draw_handler(self):
+        """后台插件页「联动检查」：返回万象画卷可用状态与本插件配图配置。"""
+        try:
+            from quart import jsonify
+        except Exception:
+            return {
+                "success": False,
+                "message": "当前环境不支持 Quart Web API。",
+            }
+
+        plugin_name = str(
+            get_config("log_illustration.plugin_name", illustration_mod.DEFAULT_DRAW_PLUGIN)
+            or ""
+        )
+        try:
+            _draw_plugin, draw_status = illustration_mod.find_draw_plugin(
+                self.context, plugin_name
+            )
+        except Exception as exc:
+            return jsonify({
+                "success": False,
+                "message": f"检查失败：{str(exc)[:120]}",
+            })
+
+        try:
+            max_per_call = max(1, int(get_config("log_illustration.max_per_call", 3) or 3))
+        except (TypeError, ValueError):
+            max_per_call = 3
+
+        return jsonify({
+            "success": True,
+            "checked_at": int(time.time()),
+            "draw": draw_status,
+            "dice": {
+                "enabled": bool(get_config("log_illustration.enabled", True)),
+                "style_prompt": str(get_config("log_illustration.style_prompt", "") or ""),
+                "aspect_ratio": str(get_config("log_illustration.aspect_ratio", "") or ""),
+                "respect_permission": bool(
+                    get_config("log_illustration.respect_permission", False)
+                ),
+                "record_usage": bool(get_config("log_illustration.record_usage", False)),
+                "max_per_call": max_per_call,
+            },
+            "message": draw_status.get("message", ""),
+        })
 
     # ======================== 杂项命令 ============================= #
 
@@ -194,6 +277,7 @@ class DicePlugin(
             "`/log del <日志名>` - 删除日志会话\n"
             "`/log get <日志名>` - 获取日志会话\n"
             "`/log stat <日志名>` - 获取日志会话统计信息\n"
+            "`/log draw [序号|cover|all]` - 用万象画卷把高光画成插图\n"
         )
 
         yield event.plain_result(help_text)

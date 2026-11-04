@@ -6,14 +6,36 @@
 
 ---
 
-## [未发布]
+## [2.1.1] - 2026-11-05
+
+### ⚠️ 行为变更
+
+- **LLM 美化默认改为 `core + 前后缀`**
+  - 程序生成的玩家名、骰点数值、判定结果固定为 `core`
+  - LLM 只返回 `{"prefix": "...", "suffix": "..."}`，最终输出 = `prefix + core + suffix`
+  - 模型无法改写 `core` 中的数值与判定；返回格式不合法时自动回退 `core`
+  - 如需旧版“LLM 重写整句”，把 `llm_mode.output_mode` 设为 `rewrite`
 
 ### ✨ 新增
+
+- **`.log draw` 高光配图（万象画卷联动）**
+  - 手动把最近一段总结中的高光交给万象画卷画成插图，默认不在 `.log off` 后自动生图
+  - 用法：`.log draw` / `.log draw 2` / `.log draw all` / `.log draw cover`
+  - 新增 `log_illustration` 配置：绘图插件名、画风基准（需手动填写）、宽高比、超时、冷却、`max_per_call`、权限与额度策略、复用已画高光
+  - 新增 `output.log.illustration.*` 输出模板（绘制中、配文、封面、失败、不可用、冷却等）
+  - 插图保存到 `data/highlight_images/<群>/<日志>/`，删除日志时一并清理
+  - 后台插件页新增「联动检查」：一键查看万象画卷是否安装/启用/配置好画图节点，以及当前画风基准
 
 - **LLM 美化可单独指定更便宜的模型**
   - 新增 `llm_mode.provider_id`，可单独选择美化使用的 Provider
   - `llm_mode.model` 用于指定该 Provider 下的模型；两者留空时回退当前会话 Provider/模型
   - 只影响掷骰美化，不影响主对话模型与费用
+
+- **LLM 美化改为 core + 前后缀（默认）**
+  - 玩家名、骰点数值、判定结果（含多重射击/奖励惩罚骰格式）固定为 `core`
+  - LLM 只返回 `{"prefix": "...", "suffix": "..."}`，最终输出 = `prefix + core + suffix`
+  - 模型无法改写 `core` 中的数值与判定；解析失败自动回退 `core`
+  - 新增 `llm_mode.output_mode`：`decorate`（默认）/ `rewrite`（旧行为，LLM 重写整句）
 
 ---
 

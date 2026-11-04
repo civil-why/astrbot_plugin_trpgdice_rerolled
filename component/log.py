@@ -243,6 +243,21 @@ class JSONLoggerCore:
             return None, None
         return max(paused, key=lambda item: int(item[1].get("end_time") or 0))
 
+    async def latest_session_with_summaries(self, group_id: str) -> Tuple[Optional[str], Optional[dict]]:
+        """返回最近产生阶段总结的会话（供 .log draw 配图使用）。"""
+        grp = await self.load_group(group_id)
+        candidates = [
+            (name, sec)
+            for name, sec in grp.items()
+            if sec.get("summaries")
+        ]
+        if not candidates:
+            return None, None
+        return max(
+            candidates,
+            key=lambda item: int((item[1]["summaries"][-1] or {}).get("time") or 0),
+        )
+
     async def save_session_summary(
         self,
         group_id: str,
@@ -277,6 +292,24 @@ class JSONLoggerCore:
         if cursor is not None:
             sec["summary_cursor"] = int(cursor)
 
+        await self.persist_group(group_id)
+        return True
+
+    async def save_illustration(self, group_id: str, name: str, entry: dict) -> bool:
+        """在会话中追加一条高光插图记录。
+
+        结构：
+          session["illustrations"] = [
+              {"hash", "index", "kind", "text", "prompt", "file",
+               "provider", "model", "time"},
+              ...
+          ]
+        """
+        grp = await self.load_group(group_id)
+        sec = grp.get(name)
+        if not sec:
+            return False
+        sec.setdefault("illustrations", []).append(dict(entry))
         await self.persist_group(group_id)
         return True
 

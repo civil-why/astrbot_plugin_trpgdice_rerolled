@@ -80,6 +80,86 @@
       }
     }
   },
+  "log_illustration": {
+    "description": "高光时刻配图（万象画卷联动）",
+    "type": "object",
+    "hint": "`.log draw` 会把最近一段总结里的高光交给万象画卷画成插图。默认手动触发；画风基准需要手动填写。后台插件页「联动检查」可查看万象画卷是否安装、启用并配置了画图节点",
+    "items": {
+      "enabled": {
+        "description": "是否启用高光配图",
+        "type": "bool",
+        "default": true
+      },
+      "plugin_name": {
+        "description": "绘图插件名",
+        "type": "string",
+        "hint": "默认 astrbot_plugin_omnidraw（万象画卷）。改名或使用其他兼容插件时可在此修改",
+        "default": "astrbot_plugin_omnidraw"
+      },
+      "style_prompt": {
+        "description": "画风基准",
+        "type": "text",
+        "hint": "需要手动调整成你想要的画风，例如：日系动画关键帧插画，干净线稿，赛璐璐上色，电影感构图。建议同时把万象画卷的「副脑风格」改成同一画风",
+        "default": "日系动画关键帧插画，干净线稿，赛璐璐上色，电影感构图"
+      },
+      "aspect_ratio": {
+        "description": "图片宽高比",
+        "type": "string",
+        "hint": "例如 16:9、3:4、1:1；留空则由绘图插件/模型决定。部分接口（如 OpenAI Images）不支持该参数，填了可能报错",
+        "default": ""
+      },
+      "timeout": {
+        "description": "单张图超时（秒）",
+        "type": "int",
+        "slider": {
+          "min": 30,
+          "max": 600,
+          "step": 10
+        },
+        "default": 180
+      },
+      "max_per_call": {
+        "description": "`.log draw all` 单次最多画几张",
+        "type": "int",
+        "slider": {
+          "min": 1,
+          "max": 10,
+          "step": 1
+        },
+        "hint": "每张图都是一次独立的生图请求，数量越多耗时与费用越高",
+        "default": 3
+      },
+      "cooldown_seconds": {
+        "description": "同群绘制冷却（秒）",
+        "type": "int",
+        "slider": {
+          "min": 0,
+          "max": 600,
+          "step": 10
+        },
+        "hint": "防止连续触发消耗额度；0 表示不限制",
+        "default": 30
+      },
+      "respect_permission": {
+        "description": "沿用万象画卷的权限与额度检查",
+        "type": "bool",
+        "hint": "开启后按万象画卷的白名单/黑名单和每日额度校验；关闭时不受其限制",
+        "default": false
+      },
+      "record_usage": {
+        "description": "计入万象画卷的用户额度",
+        "type": "bool",
+        "hint": "仅在开启「沿用权限与额度检查」时生效",
+        "default": false
+      },
+      "reuse_existing": {
+        "description": "复用已画过的高光",
+        "type": "bool",
+        "hint": "同一段高光重复执行 `.log draw` 时直接返回已有插图，避免重复扣费",
+        "default": true
+      }
+    }
+  },
   "llm_mode": {
     "description": "LLM 模式配置",
     "type": "object",
@@ -89,6 +169,13 @@
         "description": "是否启用 LLM 美化模式",
         "type": "bool",
         "default": false
+      },
+      "output_mode": {
+        "description": "LLM 美化方式",
+        "type": "string",
+        "options": ["decorate", "rewrite"],
+        "hint": "decorate=core 固定，LLM 只写前后缀（默认，数值/判定不会被改）；rewrite=LLM 重写整句（旧行为）",
+        "default": "decorate"
       },
       "provider_id": {
         "description": "美化使用的模型 Provider",
@@ -104,10 +191,10 @@
         "default": ""
       },
       "system_prompt": {
-        "description": "LLM 美化输出的系统提示词",
+        "description": "LLM 美化提示词（可选覆盖）",
         "type": "text",
-        "hint": "骰子原始结果文本会作为用户消息发送给 LLM，此处填写系统提示词",
-        "default": "你是一个跑团骰娘，风格活泼可爱。请用简短生动的语言（不超过60字）描述以下掷骰结果，可以加入一点点角色扮演风格，但必须保留所有数字和判定结论。"
+        "hint": "core 固定，LLM 只写前后缀；留空使用内置提示词。无论填什么，系统都会自动追加 JSON 输出协议",
+        "default": "你是跑团骰娘，风格活泼开朗。你会收到一段 core，包含玩家名称、骰点数值和判定结果，其中可能有多重射击、奖励骰或惩罚骰等格式。你只负责在 core 前后写 prefix / suffix 作为语气、动作或转场，不能修改、删减或重复 core 本身。不要重复 core 里的数字、骰子表达式或判定标签。"
       },
       "timeout": {
         "description": "美化请求超时（秒）",
@@ -918,6 +1005,72 @@
                 "description": "生成失败提示 (变量: error)",
                 "type": "text",
                 "default": "⚠️ 本段小结生成失败：{error}"
+              }
+            }
+          },
+          "illustration": {
+            "description": "高光配图输出（.log draw）",
+            "type": "object",
+            "items": {
+              "generating": {
+                "description": "绘制中的提示 (变量: index, total)",
+                "type": "text",
+                "default": "🎨 正在绘制高光 {index}/{total}…"
+              },
+              "result": {
+                "description": "高光插图配文 (变量: index, text)",
+                "type": "text",
+                "default": "✨ 高光时刻 #{index}\n{text}"
+              },
+              "cover": {
+                "description": "章节封面配文 (变量: summary)",
+                "type": "text",
+                "default": "📖 本段剧情速写"
+              },
+              "failed": {
+                "description": "绘制失败提示 (变量: error)",
+                "type": "text",
+                "default": "🎨 高光绘制失败：{error}"
+              },
+              "unavailable": {
+                "description": "绘图插件不可用 (变量: reason)",
+                "type": "text",
+                "default": "🎨 无法绘制高光：{reason}\n（可在后台「插件管理 → 骰娘 → 联动检查」确认万象画卷状态）"
+              },
+              "disabled": {
+                "description": "配图功能未启用",
+                "type": "text",
+                "default": "🎨 高光配图未启用，可在插件配置的「高光时刻配图」中开启。"
+              },
+              "no_highlights": {
+                "description": "没有可绘制的高光",
+                "type": "text",
+                "default": "🎨 本段没有可绘制的高光。"
+              },
+              "no_session": {
+                "description": "没有阶段总结",
+                "type": "text",
+                "default": "🎨 还没有可用于配图的阶段总结，请先执行 .log off。"
+              },
+              "index_invalid": {
+                "description": "高光序号越界 (变量: count)",
+                "type": "text",
+                "default": "🎨 高光序号超出范围（本段共 {count} 条）。"
+              },
+              "group_only": {
+                "description": "仅支持群聊",
+                "type": "text",
+                "default": "🎨 高光配图仅支持群聊。"
+              },
+              "cooldown": {
+                "description": "冷却提示 (变量: seconds)",
+                "type": "text",
+                "default": "🎨 绘制冷却中，请 {seconds} 秒后再试。"
+              },
+              "busy": {
+                "description": "上一张还在绘制时的提示",
+                "type": "text",
+                "default": "🎨 本群正在绘制高光，请等这张画完再试。"
               }
             }
           }

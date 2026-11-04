@@ -452,5 +452,10 @@ class RouterMixin:
             elif sub_cmd.startswith("stat"):
                 async for result in self.cmd_log_stat(event):
                     yield result
+            elif sub_cmd.startswith("draw") or sub_cmd.startswith("画"):
+                async for result in self.cmd_log_draw(event):
+                    yield result
             else:
-                yield event.plain_result("[提示] log 子命令: new / on / off / end / list / del / get / stat")
+                yield event.plain_result(
+                    "[提示] log 子命令: new / on / off / end / list / del / get / stat / draw"
+                )
