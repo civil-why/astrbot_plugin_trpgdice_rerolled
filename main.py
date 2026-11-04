@@ -76,12 +76,27 @@ class DicePlugin(
             isDice=True
         )
 
+    def _get_beautify_provider(self, event: AstrMessageEvent):
+        """美化优先使用 llm_mode.provider_id 指定的 Provider，否则回退当前对话模型。"""
+        provider_id = str(get_config("llm_mode.provider_id", "") or "").strip()
+        if provider_id:
+            try:
+                provider = self.context.get_provider_by_id(provider_id)
+                if provider:
+                    return provider
+            except Exception:
+                pass
+        try:
+            return self.context.get_using_provider(umo=event.unified_msg_origin)
+        except Exception:
+            return None
+
     async def _beautify(self, raw_text: str, event: AstrMessageEvent) -> str:
         """若 LLM 模式已启用，将原始结果文本交给 LLM 美化后返回；否则原样返回。"""
         if not get_config("llm_mode.enabled", False):
             return raw_text
         try:
-            prov = self.context.get_using_provider(umo=event.unified_msg_origin)
+            prov = self._get_beautify_provider(event)
             if not prov:
                 return raw_text
             system_prompt = get_config("llm_mode.system_prompt", _LLM_DEFAULT_SYSTEM_PROMPT) or _LLM_DEFAULT_SYSTEM_PROMPT

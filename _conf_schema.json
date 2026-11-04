@@ -90,10 +90,17 @@
         "type": "bool",
         "default": false
       },
-      "model": {
-        "description": "使用的模型 ID（留空则使用当前对话默认模型）",
+      "provider_id": {
+        "description": "美化使用的模型 Provider",
         "type": "string",
-        "hint": "必须是「服务提供商」里当前 Provider 支持的模型 ID，例如 deepseek-v4-flash。API Key / Base URL 在该 Provider 中配置，本插件只覆盖模型名",
+        "_special": "select_provider",
+        "hint": "留空则使用当前对话 Provider；可单独选一个更便宜的 Provider",
+        "default": ""
+      },
+      "model": {
+        "description": "美化使用的模型 ID",
+        "type": "string",
+        "hint": "留空则使用该 Provider 的默认模型；例如 deepseek-v4-flash",
         "default": ""
       },
       "system_prompt": {
